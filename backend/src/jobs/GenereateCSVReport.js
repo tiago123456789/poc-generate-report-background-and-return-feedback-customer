@@ -1,25 +1,39 @@
 const Queue = require("bull")
 const { io } = require("socket.io-client");
-const fs = require("fs")
-const socket = io("http://localhost:3000"); 
+const fs = require("fs");
 
+const socket = io(process.env.CLIENT_URL_SOCKET); 
 
 const generateReportsCSVQueue = new Queue(
-    'genereate-reports-csv', 'redis://127.0.0.1:6379'
+    process.env.QUEUE_REPORT_CSV, process.env.REDIS_URL
 );
 
-generateReportsCSVQueue.process((job, done) => {
-    const data = job.data
+const sleep = (seconds) => {
+    return new Promise((resolve, reject) => {
+        setTimeout(() => resolve(), seconds * 1000);
+    })
+}
+
+generateReportsCSVQueue.process(async (job, done) => {
+    const data = job.data;
+
+    await sleep(2)
     socket.emit("status_generation_report", {
         ...data, 
-        status: `Init generation report ${data.reportId}` 
+        status: `Iniciando geração do relatório...` 
     })
 
+    await sleep(2)
     socket.emit("status_generation_report", {
         ...data, 
-        status: `Starting generation report ${data.reportId}` 
+        status: `Preparando relatório...` 
     })
 
+    await sleep(2)
+    socket.emit("status_generation_report", {
+        ...data, 
+        status: `Gerando relatório...` 
+    })
     const headers = "firstname,lastname,email,address"
     let lines = ""
     for(let index = 0; index <= data.quantityLines; index++) {
@@ -28,17 +42,23 @@ generateReportsCSVQueue.process((job, done) => {
 
     lines = `${headers}\n${lines}`
 
+    await sleep(2)
     socket.emit("status_generation_report", {
         ...data, 
-        status: `Finish generation report ${data.reportId}` 
+        status: `Geração do relatório finalizou.` 
     })
+
+    sleep(2)
     socket.emit("status_generation_report", {
         ...data, 
-        status: `Creating report ${data.reportId}` 
+        status: `Gerando link do relatório...` 
     })
+
+    await sleep(2)
     fs.writeFileSync(
         `./reports/${data.reportId}.csv`, lines
     )
+
     socket.emit("status_generation_report", {
         ...data, 
         status: `Created report ${data.reportId}`,

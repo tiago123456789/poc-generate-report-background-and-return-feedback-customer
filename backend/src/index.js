@@ -1,13 +1,17 @@
+require("dotenv").config()
 const express = require("express")
 const Queue = require("bull")
 const uuid = require("uuid")
 const path = require("path")
 const socket = require("socket.io")
+const cors = require("cors")
 const app = express();
 
 const generateReportsCSVQueue = new Queue(
-    'genereate-reports-csv', 'redis://127.0.0.1:6379'
+    process.env.QUEUE_REPORT_CSV, process.env.REDIS_URL
 );
+
+app.use(cors());
 
 app.use("/reports", express.static(path.join(__dirname, "..", "reports")))
 
@@ -16,7 +20,7 @@ app.get("/generate-reports-csv", async (request, response) => {
 
     await generateReportsCSVQueue.add({
         reportId: id,
-        quantityLines: 1000,
+        quantityLines: 1000000,
     })
 
     return response.json({
@@ -25,17 +29,18 @@ app.get("/generate-reports-csv", async (request, response) => {
     })
 })
 
-const server = app.listen(3000, () => {
+const server = app.listen(process.env.PORT, () => {
     console.log("Server is running in port 3000")
 })
 
-// Socket setup
-const io = socket(server);
+const io = socket(server, {
+    cors: {
+        origin: "*"
+    }
+});
 
 io.on("connection", function (socket) {
-    console.log("Made socket connection");
-
     socket.on("status_generation_report", (data) => {
-        console.log(`REPORT ID ${data.reportId} STATUS => ${data.status}`)
+        io.emit(`status_generation_report_${data.reportId}`, data)
     })
 });
