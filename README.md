@@ -8,7 +8,6 @@ Instruction to running the project locally:
 ===========================================
 
 - Clone
-- Create 
 - Execute command **npm i** inside directories **backend** and **frontend**
 - Create **.env** file based **.env.example** file inside directories **backend** and **frontend**
 - Execute command inside backend **docker-compose up -d** up redis database
